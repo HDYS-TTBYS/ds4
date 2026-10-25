@@ -42658,7 +42658,13 @@ static bool ds41_graph_prefill_sweep(ds41_gpu_graph *g, const ds4_model *m,
     const bool batch_core = batch_attention && !getenv("DS4_METAL_DISABLE_V41_BATCH_CORE");
     const bool batch_hc = batch_attention && batch_moe &&
         !getenv("DS4_METAL_DISABLE_V41_BATCH_HC");
-    const bool decoder_suffix = wide && total_count >= 8192u &&
+    /* The suffix is exact, not approximate: layer 20 needs the previous 127
+     * decoder inputs and every following layer needs 127 fewer rows. The only
+     * hard floor is that warm-up offset, which must not wrap; otherwise the
+     * requirement is a multi-chunk prompt, because the carry buffer is what
+     * the decoder reloads. DSpark reserves 128 rows instead of 1. */
+    const uint32_t decoder_floor = (g->dspark ? 128u : 1u) + 19u * 127u + 127u;
+    const bool decoder_suffix = wide && total_count >= decoder_floor &&
         !getenv("DS4_METAL_DISABLE_V41_DECODER_SUFFIX");
     if ((encoder_only || resume_encoder) && !decoder_suffix) return false;
     uint32_t (*ids)[2][DS4_ENGRAM_COLS] = g->prefill_ids;
