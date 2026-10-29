@@ -159,6 +159,9 @@ static int check_router(void) {
 }
 
 static int check_quantization(void) {
+    /* This check has its own deterministic data; do not inherit the seed
+     * consumed by the router check. */
+    seed = 7919;
     enum { WIDTH = 512, ROWS = 33, N = WIDTH * ROWS };
     float *source = malloc(N * sizeof(float)), *actual = malloc(N * sizeof(float));
     CHECK(source && actual);
